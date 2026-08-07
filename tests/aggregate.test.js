@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateDiscounts } from '../src/aggregate.js';
+import { aggregateDiscounts, normalizeStoreName } from '../src/aggregate.js';
 import { applyFallbacks, applyFirstScraped } from '../src/build-site.js';
 import { buildHtml } from '../src/render.js';
 import { extractDiscountsFromHtml, scrapeSource } from '../src/scraper.js';
@@ -745,4 +745,50 @@ test('scrapeSource falls back to Klarna HTML when GraphQL returns empty sections
     scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
     lastScraped: '2026-08-07T11:00:00.000Z',
   });
+});
+
+test('normalizeStoreName strips known prefixes', () => {
+  assert.equal(normalizeStoreName('Rabatt hos Scandic'), 'scandic');
+  assert.equal(normalizeStoreName('Hotellrabatt Scandic'), 'scandic');
+  assert.equal(normalizeStoreName('Rabatt på Scandic'), 'scandic');
+});
+
+test('normalizeStoreName strips domain TLD', () => {
+  assert.equal(normalizeStoreName('Scandic.no'), 'scandic');
+  assert.equal(normalizeStoreName('some.store.com'), 'some store');
+});
+
+test('aggregateDiscounts groups single-word discount with matching multi-word discounts', () => {
+  const base = {
+    link: 'https://x.com',
+    source: 'A',
+    sourceId: 'a',
+    scrapedFrom: 'https://x.com',
+    lastScraped: '2026-08-07T00:00:00.000Z',
+  };
+  const stores = aggregateDiscounts([
+    { ...base, name: 'Scandic', description: '10% rabatt' },
+    { ...base, name: 'Scandic Hotels', description: '15% rabatt' },
+    { ...base, name: 'Hotellrabatt Scandic', description: '20% rabatt' },
+  ]);
+
+  assert.equal(stores.length, 1);
+  assert.equal(stores[0].discountCount, 3);
+});
+
+test('aggregateDiscounts groups prefix-normalized discounts together', () => {
+  const base = {
+    link: 'https://x.com',
+    source: 'A',
+    sourceId: 'a',
+    scrapedFrom: 'https://x.com',
+    lastScraped: '2026-08-07T00:00:00.000Z',
+  };
+  const stores = aggregateDiscounts([
+    { ...base, name: 'Rabatt hos Tusenfryd', description: '10% rabatt' },
+    { ...base, name: 'Tusenfryd', description: '15% rabatt' },
+  ]);
+
+  assert.equal(stores.length, 1);
+  assert.equal(stores[0].discountCount, 2);
 });
