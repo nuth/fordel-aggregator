@@ -136,6 +136,68 @@ test('scrapeSource uses Remember Reward extractor and stamps discounts', { concu
   ]);
 });
 
+test('scrapeSource uses LOfavør scraper, fetches individual pages and extracts descriptions', { concurrency: false }, async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const homeHtml = `
+    <nav>
+      <a class="nav-link" href="https://www.lofavor.no/forsikring/barneforsikring">Barneforsikring</a>
+      <a class="nav-link" href="https://www.lofavor.no/juridisk/advokatforsikring">Advokatforsikring</a>
+    </nav>`;
+
+  const pageDescriptions = new Map([
+    [
+      'https://www.lofavor.no/forsikring/barneforsikring',
+      '<meta name="description" content="Barneforsikring gir trygghet for deg og barnet.">',
+    ],
+    [
+      'https://www.lofavor.no/juridisk/advokatforsikring',
+      '<meta name="description" content="Med advokatforsikring har du tilgang til advokathjelp.">',
+    ],
+  ]);
+
+  globalThis.fetch = async (url) => {
+    const text = url === 'https://www.lofavor.no/home' ? homeHtml : (pageDescriptions.get(url) ?? '');
+    return { ok: true, text: async () => text };
+  };
+
+  const result = await scrapeSource(
+    {
+      id: 'lofavor',
+      name: 'LOfavør',
+      url: 'https://www.lofavor.no/home',
+      baseUrl: 'https://www.lofavor.no',
+    },
+    () => new Date('2026-08-07T09:00:00.000Z'),
+  );
+
+  assert.equal(result.error, null);
+  assert.equal(result.count, 2);
+  assert.deepEqual(result.discounts[0], {
+    name: 'Barneforsikring',
+    description: 'Barneforsikring gir trygghet for deg og barnet.',
+    categories: ['Forsikring'],
+    link: 'https://www.lofavor.no/forsikring/barneforsikring',
+    source: 'LOfavør',
+    sourceId: 'lofavor',
+    scrapedFrom: 'https://www.lofavor.no/home',
+    lastScraped: '2026-08-07T09:00:00.000Z',
+  });
+  assert.deepEqual(result.discounts[1], {
+    name: 'Advokatforsikring',
+    description: 'Med advokatforsikring har du tilgang til advokathjelp.',
+    categories: ['Juridisk'],
+    link: 'https://www.lofavor.no/juridisk/advokatforsikring',
+    source: 'LOfavør',
+    sourceId: 'lofavor',
+    scrapedFrom: 'https://www.lofavor.no/home',
+    lastScraped: '2026-08-07T09:00:00.000Z',
+  });
+});
+
 test('scrapeSource uses OBOS extractor and stamps discounts', { concurrency: false }, async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => {
