@@ -1,5 +1,4 @@
 import { scrapeLofavorDiscounts } from './scrapers/lofavor.js';
-import { scrapeKlarnaDiscounts } from './scrapers/klarna.js';
 import { extractNitoDiscounts } from './scrapers/nito.js';
 import { extractObosDiscounts } from './scrapers/obos.js';
 import { extractRememberRewardDiscounts } from './scrapers/remember.js';
@@ -15,7 +14,6 @@ const SOURCE_EXTRACTORS = {
 const SOURCE_SCRAPERS = {
   lofavor: scrapeLofavorDiscounts,
   'trumf-netthandel': scrapeTrumfDiscounts,
-  'klarna-cashback': scrapeKlarnaDiscounts,
 };
 
 export { extractDiscountsFromHtml };
