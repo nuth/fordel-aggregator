@@ -721,3 +721,50 @@ test('scrapeSource uses Klarna scraper and paginates until exhausted', { concurr
     lastScraped: '2026-08-07T12:00:00.000Z',
   });
 });
+
+test('scrapeSource uses Opptil prefix when showUpToPrefix is true and prefix is empty', { concurrency: false }, async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const page = JSON.stringify({
+    stores: [
+      {
+        displayName: 'Zalando',
+        cashbackDiscount: {
+          discountPercentage: 800,
+          discountLabel: { prefix: '', body: '8%', suffix: 'cashback' },
+          showUpToPrefix: true,
+        },
+        category: 'fashion',
+      },
+    ],
+    totalHits: 1,
+  });
+
+  globalThis.fetch = async () => ({ ok: true, text: async () => page });
+
+  const result = await scrapeSource(
+    {
+      id: 'klarna-cashback',
+      name: 'Klarna Cashback',
+      url: 'https://www.klarna.com/no/store/?type=CASHBACK',
+      baseUrl: 'https://www.klarna.com',
+    },
+    () => new Date('2026-08-07T12:00:00.000Z'),
+  );
+
+  assert.equal(result.error, null);
+  assert.equal(result.count, 1);
+  assert.deepEqual(result.discounts[0], {
+    name: 'Zalando',
+    description: 'Opptil 8% cashback',
+    categories: ['Mote'],
+    link: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    source: 'Klarna Cashback',
+    sourceId: 'klarna-cashback',
+    scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    lastScraped: '2026-08-07T12:00:00.000Z',
+  });
+});
