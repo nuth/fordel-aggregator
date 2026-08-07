@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node ./src/build-site.js",
+    "render": "node ./src/render-site.js",
     "scrape": "node ./src/build-site.js",
     "test": "node --test"
   },

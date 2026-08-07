@@ -1,0 +1,57 @@
+name: Deploy without scraping
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run targeted tests
+        run: npm test
+
+      - name: Download existing data from GitHub Pages
+        run: |
+          mkdir -p docs
+          curl --fail --silent --show-error \
+            "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data.json" \
+            --output docs/data.json
+
+      - name: Generate GitHub Pages site
+        run: npm run render
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
