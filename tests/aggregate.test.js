@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aggregateDiscounts } from '../src/aggregate.js';
+import { applyFallbacks } from '../src/build-site.js';
 import { buildHtml } from '../src/render.js';
 import { extractDiscountsFromHtml, scrapeSource } from '../src/scraper.js';
 
@@ -244,4 +245,94 @@ test('scrapeSource batches Trumf category fetches and stamps discounts', { concu
 test('buildHtml adds noopener to external links', () => {
   const html = buildHtml({ generatedAt: '2026-08-07T10:00:00.000Z' });
   assert.match(html, /rel = 'noopener noreferrer'/);
+});
+
+test('applyFallbacks uses previous discounts with stale flag when source fails', () => {
+  const previousDiscount = {
+    name: 'Komplett',
+    description: 'Opptil 4 % bonus',
+    categories: ['Elektronikk'],
+    link: 'https://example.com/komplett',
+    source: 'Test Source',
+    sourceId: 'test-source',
+    scrapedFrom: 'https://example.com/',
+    lastScraped: '2026-08-06T07:00:00.000Z',
+  };
+  const previousDiscountsBySource = new Map([['test-source', [previousDiscount]]]);
+
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      url: 'https://example.com/',
+      scrapedAt: '2026-08-07T07:00:00.000Z',
+      count: 0,
+      discounts: [],
+      error: 'HTTP 503 Service Unavailable',
+    },
+  ];
+
+  applyFallbacks(sourceResults, previousDiscountsBySource);
+
+  assert.equal(sourceResults[0].count, 1);
+  assert.equal(sourceResults[0].discounts[0].stale, true);
+  assert.equal(sourceResults[0].discounts[0].name, 'Komplett');
+  assert.equal(sourceResults[0].error, 'HTTP 503 Service Unavailable');
+});
+
+test('applyFallbacks leaves result unchanged when source fails with no previous data', () => {
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      url: 'https://example.com/',
+      scrapedAt: '2026-08-07T07:00:00.000Z',
+      count: 0,
+      discounts: [],
+      error: 'HTTP 503 Service Unavailable',
+    },
+  ];
+
+  applyFallbacks(sourceResults, new Map());
+
+  assert.equal(sourceResults[0].count, 0);
+  assert.deepEqual(sourceResults[0].discounts, []);
+});
+
+test('applyFallbacks does not modify successful source results', () => {
+  const discount = {
+    name: 'Komplett',
+    description: 'Opptil 4 % bonus',
+    categories: ['Elektronikk'],
+    link: 'https://example.com/komplett',
+    source: 'Test Source',
+    sourceId: 'test-source',
+    scrapedFrom: 'https://example.com/',
+    lastScraped: '2026-08-07T07:00:00.000Z',
+  };
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      url: 'https://example.com/',
+      scrapedAt: '2026-08-07T07:00:00.000Z',
+      count: 1,
+      discounts: [discount],
+      error: null,
+    },
+  ];
+  const oldDiscount = { ...discount, name: 'Old Komplett', lastScraped: '2026-08-06T07:00:00.000Z' };
+  const previousDiscountsBySource = new Map([['test-source', [oldDiscount]]]);
+
+  applyFallbacks(sourceResults, previousDiscountsBySource);
+
+  assert.equal(sourceResults[0].count, 1);
+  assert.equal(sourceResults[0].discounts[0].name, 'Komplett');
+  assert.equal(sourceResults[0].discounts[0].stale, undefined);
+});
+
+test('buildHtml renders stale badge for stale discounts', () => {
+  const html = buildHtml({ generatedAt: '2026-08-07T10:00:00.000Z' });
+  assert.match(html, /pill-stale/);
+  assert.match(html, /Utdatert/);
 });
