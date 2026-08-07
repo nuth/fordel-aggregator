@@ -7,6 +7,8 @@ export function normalizeStoreName(name) {
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    .replace(/\.[a-z]{2,}(?=\s|$)/g, '')
+    .replace(/^(rabatt hos|hotellrabatt|rabatt pa)\s+/i, '')
     .replace(/&/g, ' og ')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
@@ -62,6 +64,43 @@ export function aggregateDiscounts(discounts) {
     const discountFirstScraped = discount.firstScraped ?? discount.lastScraped;
     if (discountFirstScraped < store.firstScraped) {
       store.firstScraped = discountFirstScraped;
+    }
+  }
+
+  // Merge single-word entries into matching multi-word entries.
+  // A single-word key matches a multi-word key when the multi-word key starts
+  // with that single word followed by a space.
+  const singleWordKeys = [...stores.keys()].filter((k) => !k.includes(' '));
+  for (const singleKey of singleWordKeys) {
+    const multiKeys = [...stores.keys()].filter(
+      (k) => k.includes(' ') && k.startsWith(singleKey + ' '),
+    );
+    if (multiKeys.length === 0) {
+      continue;
+    }
+    // Determine the canonical key: prefer the first multiword key alphabetically
+    const canonicalKey = multiKeys.sort()[0];
+    const canonical = stores.get(canonicalKey);
+    // Merge all matching keys (including the single-word one) into the canonical
+    const keysToMerge = [singleKey, ...multiKeys.filter((k) => k !== canonicalKey)];
+    for (const key of keysToMerge) {
+      const entry = stores.get(key);
+      for (const category of entry.categories) {
+        canonical.categories.add(category);
+      }
+      for (const description of entry.descriptions) {
+        if (description) canonical.descriptions.add(description);
+      }
+      for (const discount of entry.discounts) {
+        canonical.discounts.push(discount);
+      }
+      if (entry.lastScraped > canonical.lastScraped) {
+        canonical.lastScraped = entry.lastScraped;
+      }
+      if (entry.firstScraped < canonical.firstScraped) {
+        canonical.firstScraped = entry.firstScraped;
+      }
+      stores.delete(key);
     }
   }
 
