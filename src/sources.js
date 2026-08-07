@@ -29,4 +29,10 @@ export const SOURCES = [
     url: 'https://www.nito.no/medlemskap-og-fordeler/medlemsfordeler/',
     baseUrl: 'https://www.nito.no',
   },
+  {
+    id: 'klarna-cashback',
+    name: 'Klarna Cashback',
+    url: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    baseUrl: 'https://www.klarna.com',
+  },
 ];

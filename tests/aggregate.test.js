@@ -646,3 +646,62 @@ test('aggregateDiscounts groups prefix-normalized discounts together', () => {
   assert.equal(stores.length, 1);
   assert.equal(stores[0].discountCount, 2);
 });
+
+test('scrapeSource uses Klarna scraper and paginates until exhausted', { concurrency: false }, async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const page0 = JSON.stringify({
+    stores: [
+      { name: 'Komplett', cashbackText: 'Opptil 5 % cashback', categories: ['Elektronikk'] },
+    ],
+    total: 2,
+  });
+  const page1 = JSON.stringify({
+    stores: [
+      { name: 'Elkjøp', cashbackText: 'Opptil 3 % cashback', categories: [] },
+    ],
+    total: 2,
+  });
+
+  let callCount = 0;
+  globalThis.fetch = async (url) => {
+    const text = url.includes('offset=0') && callCount++ === 0 ? page0 : page1;
+    return { ok: true, text: async () => text };
+  };
+
+  const result = await scrapeSource(
+    {
+      id: 'klarna-cashback',
+      name: 'Klarna Cashback',
+      url: 'https://www.klarna.com/no/store/?type=CASHBACK',
+      baseUrl: 'https://www.klarna.com',
+    },
+    () => new Date('2026-08-07T12:00:00.000Z'),
+  );
+
+  assert.equal(result.error, null);
+  assert.equal(result.count, 2);
+  assert.deepEqual(result.discounts[0], {
+    name: 'Komplett',
+    description: 'Opptil 5 % cashback',
+    categories: ['Elektronikk'],
+    link: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    source: 'Klarna Cashback',
+    sourceId: 'klarna-cashback',
+    scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    lastScraped: '2026-08-07T12:00:00.000Z',
+  });
+  assert.deepEqual(result.discounts[1], {
+    name: 'Elkjøp',
+    description: 'Opptil 3 % cashback',
+    categories: [],
+    link: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    source: 'Klarna Cashback',
+    sourceId: 'klarna-cashback',
+    scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    lastScraped: '2026-08-07T12:00:00.000Z',
+  });
+});
