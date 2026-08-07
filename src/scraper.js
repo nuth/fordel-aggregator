@@ -1,4 +1,5 @@
 import { scrapeLofavorDiscounts } from './scrapers/lofavor.js';
+import { fetchKlarnaJson, scrapeKlarnaDiscounts } from './scrapers/klarna.js';
 import { extractNitoDiscounts } from './scrapers/nito.js';
 import { extractObosDiscounts } from './scrapers/obos.js';
 import { extractRememberRewardDiscounts } from './scrapers/remember.js';
@@ -14,6 +15,11 @@ const SOURCE_EXTRACTORS = {
 const SOURCE_SCRAPERS = {
   lofavor: scrapeLofavorDiscounts,
   'trumf-netthandel': scrapeTrumfDiscounts,
+  'klarna-cashback': scrapeKlarnaDiscounts,
+};
+
+const SOURCE_FETCH = {
+  'klarna-cashback': fetchKlarnaJson,
 };
 
 export { extractDiscountsFromHtml };
@@ -28,7 +34,8 @@ export async function scrapeSource(source, clock = () => new Date()) {
     const customExtractor = SOURCE_EXTRACTORS[source.id];
 
     if (customScraper) {
-      const raw = await customScraper(fetchHtml, source);
+      const customFetch = SOURCE_FETCH[source.id] ?? fetchHtml;
+      const raw = await customScraper(customFetch, source);
       discounts = raw.map((entry) => ({ ...entry, lastScraped: scrapedAt }));
     } else {
       const html = await fetchHtml(source.url);
