@@ -33,7 +33,7 @@ export function extractRememberRewardDiscounts(html, source) {
       name: normalizeWhitespace(store.name),
       description: store.description ? normalizeWhitespace(store.description) : null,
       categories: storeCats.get(store.id) ?? [],
-      link: store.affiliateUrl || asAbsoluteUrl(source.baseUrl, store.shopUrl) || source.url,
+      link: asAbsoluteUrl(source.baseUrl, store.shopUrl) || store.affiliateUrl || source.url,
       source: source.name,
       sourceId: source.id,
       scrapedFrom: source.url,
