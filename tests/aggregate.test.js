@@ -529,3 +529,11 @@ test('buildHtml renders new badge and favorites button', () => {
   assert.match(html, /Nyeste tilbud/, 'sort by newest option should be present');
   assert.match(html, /Eldste tilbud/, 'sort by oldest option should be present');
 });
+
+test('buildHtml includes click tracking localStorage key and most-clicked sort option', () => {
+  const html = buildHtml({ generatedAt: '2026-08-07T10:00:00.000Z' });
+  assert.match(html, /fordel-clicks/, 'click tracking localStorage key should be present');
+  assert.match(html, /most-clicked/, 'most-clicked sort option value should be present');
+  assert.match(html, /Mest klikket/, 'most-clicked sort option label should be present');
+  assert.match(html, /recordClick/, 'recordClick function should be present');
+});

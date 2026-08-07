@@ -120,6 +120,7 @@ export function buildHtml({ generatedAt }) {
             <option value="name">Navn (A–Å)</option>
             <option value="newest">Nyeste tilbud først</option>
             <option value="oldest">Eldste tilbud først</option>
+            <option value="most-clicked">Mest klikket</option>
           </select>
         </label>
         <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
@@ -134,13 +135,29 @@ export function buildHtml({ generatedAt }) {
     </main>
     <script>
       const FAVORITES_KEY = 'fordel-favorites';
+      const CLICKS_KEY = 'fordel-clicks';
       const state = { search: '', category: '', source: '', sort: 'name', favOnly: false, data: null };
 
       let favorites = new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? '[]'));
+      let clicks = JSON.parse(localStorage.getItem(CLICKS_KEY) ?? '{}');
+
+      function saveClicks() {
+        localStorage.setItem(CLICKS_KEY, JSON.stringify(clicks));
+      }
+
+      function recordClick(link) {
+        clicks[link] = (clicks[link] ?? 0) + 1;
+        saveClicks();
+      }
+
+      function storeClickCount(store) {
+        return store.discounts.reduce((sum, discount) => sum + (clicks[discount.link] ?? 0), 0);
+      }
 
       function saveFavorites() {
         localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
       }
+
 
       const searchInput = document.getElementById('search');
       const categorySelect = document.getElementById('category');
@@ -185,6 +202,9 @@ export function buildHtml({ generatedAt }) {
           list.sort((a, b) => (b.firstScraped ?? b.lastScraped).localeCompare(a.firstScraped ?? a.lastScraped));
         } else if (state.sort === 'oldest') {
           list.sort((a, b) => (a.firstScraped ?? a.lastScraped).localeCompare(b.firstScraped ?? b.lastScraped));
+        } else if (state.sort === 'most-clicked') {
+          const clickCounts = new Map(list.map((store) => [store.slug, storeClickCount(store)]));
+          list.sort((a, b) => clickCounts.get(b.slug) - clickCounts.get(a.slug));
         }
         return list;
       }
@@ -263,6 +283,7 @@ export function buildHtml({ generatedAt }) {
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
             link.textContent = discount.source;
+            link.addEventListener('click', () => recordClick(discount.link));
             info.append(link, document.createTextNode(' · sist skrapt ' + formatDate(discount.lastScraped)));
 
             if (discount.isNew) {
