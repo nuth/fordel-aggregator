@@ -171,7 +171,7 @@ export function buildHtml({ generatedAt }) {
             const link = document.createElement('a');
             link.href = discount.link;
             link.target = '_blank';
-            link.rel = 'noreferrer';
+            link.rel = 'noopener noreferrer';
             link.textContent = 'Se kilden';
             item.append(link);
             list.append(item);

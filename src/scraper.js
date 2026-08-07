@@ -430,37 +430,41 @@ async function scrapeTrumfDiscounts(fetch, source) {
 
   const results = [];
   const seen = new Set();
+  const concurrency = 4;
 
-  await Promise.all(
-    catSlugs.map(async (slug) => {
-      const catHtml = await fetch(`${source.baseUrl}${slug}`).catch(() => '');
-      const catName = slug.replace('/kategori/', '');
-      const display = catName.charAt(0).toUpperCase() + catName.slice(1);
+  for (let index = 0; index < catSlugs.length; index += concurrency) {
+    const batch = catSlugs.slice(index, index + concurrency);
+    await Promise.all(
+      batch.map(async (slug) => {
+        const catHtml = await fetch(`${source.baseUrl}${slug}`).catch(() => '');
+        const catName = slug.replace('/kategori/', '');
+        const display = catName.charAt(0).toUpperCase() + catName.slice(1);
 
-      for (const tagMatch of catHtml.matchAll(/<a\b([^>]*href="\/cashback\/[^"]*"[^>]*)>/g)) {
-        const tag = tagMatch[1];
-        const hrefM = tag.match(/href="(\/cashback\/[^"]+)"/);
-        const nameM = tag.match(/data-name="([^"]+)"/);
-        const pctM = tag.match(/data-percentage="([^"]+)"/);
-        if (!hrefM || !nameM) continue;
-        const [, href] = hrefM;
-        const [, name] = nameM;
-        const pct = pctM ? pctM[1] : '';
-        const key = `${name}::${href}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        results.push({
-          name,
-          description: pct ? `Opptil ${pct} Trumf-bonus` : null,
-          categories: [display],
-          link: `${source.baseUrl}${href}`,
-          source: source.name,
-          sourceId: source.id,
-          scrapedFrom: source.url,
-        });
-      }
-    }),
-  );
+        for (const tagMatch of catHtml.matchAll(/<a\b([^>]*href="\/cashback\/[^"]*"[^>]*)>/g)) {
+          const tag = tagMatch[1];
+          const hrefM = tag.match(/href="(\/cashback\/[^"]+)"/);
+          const nameM = tag.match(/data-name="([^"]+)"/);
+          const pctM = tag.match(/data-percentage="([^"]+)"/);
+          if (!hrefM || !nameM) continue;
+          const [, href] = hrefM;
+          const [, name] = nameM;
+          const pct = pctM ? pctM[1] : '';
+          const key = `${name}::${href}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          results.push({
+            name,
+            description: pct ? `Opptil ${pct} Trumf-bonus` : null,
+            categories: [display],
+            link: `${source.baseUrl}${href}`,
+            source: source.name,
+            sourceId: source.id,
+            scrapedFrom: source.url,
+          });
+        }
+      }),
+    );
+  }
 
   return results;
 }
