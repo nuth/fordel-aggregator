@@ -33,6 +33,7 @@ export function aggregateDiscounts(discounts) {
         descriptions: new Set(),
         discounts: [],
         lastScraped: discount.lastScraped,
+        firstScraped: discount.firstScraped ?? discount.lastScraped,
       });
     }
 
@@ -52,10 +53,15 @@ export function aggregateDiscounts(discounts) {
       ...discount,
       categories: uniqueSorted(discount.categories ?? []),
       description,
+      isNew: !!(discount.firstScraped && discount.firstScraped === discount.lastScraped),
     });
 
     if (discount.lastScraped > store.lastScraped) {
       store.lastScraped = discount.lastScraped;
+    }
+    const discountFirstScraped = discount.firstScraped ?? discount.lastScraped;
+    if (discountFirstScraped < store.firstScraped) {
+      store.firstScraped = discountFirstScraped;
     }
   }
 
@@ -67,6 +73,7 @@ export function aggregateDiscounts(discounts) {
       description: [...store.descriptions][0] ?? null,
       descriptions: [...store.descriptions],
       lastScraped: store.lastScraped,
+      firstScraped: store.firstScraped,
       discountCount: store.discounts.length,
       discounts: store.discounts.sort((left, right) => {
         const bySource = left.source.localeCompare(right.source, 'nb');

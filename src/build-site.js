@@ -31,6 +31,21 @@ export function applyFallbacks(sourceResults, previousDiscountsBySource) {
   }
 }
 
+export function applyFirstScraped(sourceResults, previousDiscountsBySource) {
+  for (const result of sourceResults) {
+    if (result.error) {
+      continue;
+    }
+    const prev = previousDiscountsBySource.get(result.id) ?? [];
+    const prevByLink = new Map(prev.map((discount) => [discount.link, discount]));
+    result.discounts = result.discounts.map((discount) => {
+      const previous = prevByLink.get(discount.link);
+      const firstScraped = previous?.firstScraped ?? previous?.lastScraped ?? discount.lastScraped;
+      return { ...discount, firstScraped };
+    });
+  }
+}
+
 async function main() {
   const generatedAt = new Date().toISOString();
   const previousData = await loadPreviousData();
@@ -44,6 +59,7 @@ async function main() {
 
   const sourceResults = await Promise.all(SOURCES.map((source) => scrapeSource(source)));
 
+  applyFirstScraped(sourceResults, previousDiscountsBySource);
   applyFallbacks(sourceResults, previousDiscountsBySource);
 
   const discounts = sourceResults.flatMap((source) => source.discounts);

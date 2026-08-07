@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aggregateDiscounts } from '../src/aggregate.js';
-import { applyFallbacks } from '../src/build-site.js';
+import { applyFallbacks, applyFirstScraped } from '../src/build-site.js';
 import { buildHtml } from '../src/render.js';
 import { extractDiscountsFromHtml, scrapeSource } from '../src/scraper.js';
 
@@ -335,4 +335,134 @@ test('buildHtml renders stale badge for stale discounts', () => {
   const html = buildHtml({ generatedAt: '2026-08-07T10:00:00.000Z' });
   assert.match(html, /pill-stale/);
   assert.match(html, /Utdatert/);
+});
+
+test('applyFirstScraped sets firstScraped from previous data when available', () => {
+  const previousDiscount = {
+    name: 'Komplett',
+    link: 'https://example.com/komplett',
+    source: 'Test Source',
+    sourceId: 'test-source',
+    lastScraped: '2026-08-06T07:00:00.000Z',
+    firstScraped: '2026-08-05T07:00:00.000Z',
+  };
+  const previousDiscountsBySource = new Map([['test-source', [previousDiscount]]]);
+
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      error: null,
+      discounts: [
+        {
+          name: 'Komplett',
+          link: 'https://example.com/komplett',
+          source: 'Test Source',
+          sourceId: 'test-source',
+          lastScraped: '2026-08-07T07:00:00.000Z',
+        },
+      ],
+    },
+  ];
+
+  applyFirstScraped(sourceResults, previousDiscountsBySource);
+
+  assert.equal(sourceResults[0].discounts[0].firstScraped, '2026-08-05T07:00:00.000Z');
+});
+
+test('applyFirstScraped uses lastScraped as firstScraped when no previous data', () => {
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      error: null,
+      discounts: [
+        {
+          name: 'Komplett',
+          link: 'https://example.com/komplett',
+          source: 'Test Source',
+          sourceId: 'test-source',
+          lastScraped: '2026-08-07T07:00:00.000Z',
+        },
+      ],
+    },
+  ];
+
+  applyFirstScraped(sourceResults, new Map());
+
+  assert.equal(sourceResults[0].discounts[0].firstScraped, '2026-08-07T07:00:00.000Z');
+});
+
+test('aggregateDiscounts marks discount as isNew when firstScraped equals lastScraped', () => {
+  const stores = aggregateDiscounts([
+    {
+      name: 'Tusenfryd',
+      description: '10 % rabatt',
+      categories: ['Fornøyelsespark'],
+      link: 'https://example.com/1',
+      source: 'Source A',
+      sourceId: 'a',
+      scrapedFrom: 'https://example.com/a',
+      lastScraped: '2026-08-07T00:00:00.000Z',
+      firstScraped: '2026-08-07T00:00:00.000Z',
+    },
+  ]);
+
+  assert.equal(stores[0].discounts[0].isNew, true);
+});
+
+test('aggregateDiscounts does not mark discount as isNew when firstScraped differs', () => {
+  const stores = aggregateDiscounts([
+    {
+      name: 'Tusenfryd',
+      description: '10 % rabatt',
+      categories: ['Fornøyelsespark'],
+      link: 'https://example.com/1',
+      source: 'Source A',
+      sourceId: 'a',
+      scrapedFrom: 'https://example.com/a',
+      lastScraped: '2026-08-07T00:00:00.000Z',
+      firstScraped: '2026-08-01T00:00:00.000Z',
+    },
+  ]);
+
+  assert.equal(stores[0].discounts[0].isNew, false);
+});
+
+test('aggregateDiscounts includes firstScraped at store level', () => {
+  const stores = aggregateDiscounts([
+    {
+      name: 'Tusenfryd',
+      categories: [],
+      link: 'https://example.com/1',
+      source: 'Source A',
+      sourceId: 'a',
+      scrapedFrom: 'https://example.com/a',
+      lastScraped: '2026-08-07T00:00:00.000Z',
+      firstScraped: '2026-08-03T00:00:00.000Z',
+    },
+    {
+      name: 'Tusenfryd',
+      categories: [],
+      link: 'https://example.com/2',
+      source: 'Source B',
+      sourceId: 'b',
+      scrapedFrom: 'https://example.com/b',
+      lastScraped: '2026-08-07T01:00:00.000Z',
+      firstScraped: '2026-08-01T00:00:00.000Z',
+    },
+  ]);
+
+  assert.equal(stores[0].firstScraped, '2026-08-01T00:00:00.000Z');
+});
+
+test('buildHtml renders new badge and favorites button', () => {
+  const html = buildHtml({ generatedAt: '2026-08-07T10:00:00.000Z' });
+  assert.match(html, /pill-new/, 'new badge CSS class should exist in template');
+  assert.match(html, /pill-stale/, 'stale badge CSS class should exist in template');
+  assert.match(html, /fav-btn/, 'favorites button CSS class should exist in template');
+  assert.match(html, /fordel-favorites/, 'localStorage key should be present');
+  assert.match(html, /Kun favoritter/, 'favorites-only checkbox label should be present');
+  assert.match(html, /Nyeste tilbud/, 'sort by newest option should be present');
+  assert.match(html, /Eldste tilbud/, 'sort by oldest option should be present');
 });

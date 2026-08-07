@@ -27,6 +27,10 @@ export function buildHtml({ generatedAt }) {
         --pill-text: #334155;
         --pill-stale-bg: #fef3c7;
         --pill-stale-text: #92400e;
+        --pill-new-bg: #dcfce7;
+        --pill-new-text: #166534;
+        --pill-fav-bg: #fef9c3;
+        --pill-fav-text: #854d0e;
         --input-bg: #ffffff;
         --input-border: #cbd5e1;
         --focus-ring: rgba(37,99,235,0.22);
@@ -46,6 +50,10 @@ export function buildHtml({ generatedAt }) {
           --pill-text: #cbd5e1;
           --pill-stale-bg: #451a03;
           --pill-stale-text: #fcd34d;
+          --pill-new-bg: #14532d;
+          --pill-new-text: #86efac;
+          --pill-fav-bg: #422006;
+          --pill-fav-text: #fde68a;
           --input-bg: #1e293b;
           --input-border: #475569;
           --focus-ring: rgba(96,165,250,0.25);
@@ -67,10 +75,14 @@ export function buildHtml({ generatedAt }) {
       .summary { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.25rem; }
       .pill { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.3rem 0.75rem; border-radius: 999px; background: var(--pill-bg); color: var(--pill-text); font-size: 0.82rem; font-weight: 500; }
       .pill-stale { background: var(--pill-stale-bg); color: var(--pill-stale-text); }
+      .pill-new { background: var(--pill-new-bg); color: var(--pill-new-text); }
       .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
       .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: var(--shadow); transition: box-shadow 0.2s, transform 0.2s; }
       .card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
-      .card h2 { margin: 0 0 0.75rem; font-size: 1.15rem; font-weight: 700; }
+      .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; }
+      .card h2 { margin: 0; font-size: 1.15rem; font-weight: 700; flex: 1; }
+      .fav-btn { background: none; border: none; cursor: pointer; font-size: 1.4rem; line-height: 1; padding: 0; color: var(--text-muted); transition: color 0.15s; flex-shrink: 0; }
+      .fav-btn[aria-pressed="true"] { color: #f59e0b; }
       ul { padding-left: 1.1rem; margin: 0.5rem 0 0; }
       li + li { margin-top: 0.85rem; }
       a { color: var(--accent); text-decoration: none; font-weight: 500; }
@@ -102,6 +114,18 @@ export function buildHtml({ generatedAt }) {
             <option value="">Alle kilder</option>
           </select>
         </label>
+        <label>
+          <span class="muted">Sorter</span>
+          <select id="sort">
+            <option value="name">Navn (A–Å)</option>
+            <option value="newest">Nyeste tilbud først</option>
+            <option value="oldest">Eldste tilbud først</option>
+          </select>
+        </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+          <input id="favonly" type="checkbox" style="width:auto;padding:0;">
+          <span class="muted" style="margin:0;">Kun favoritter</span>
+        </label>
       </section>
 
       <div id="summary" class="summary" aria-live="polite"></div>
@@ -109,11 +133,20 @@ export function buildHtml({ generatedAt }) {
       <section id="errors" class="errors"></section>
     </main>
     <script>
-      const state = { search: '', category: '', source: '', data: null };
+      const FAVORITES_KEY = 'fordel-favorites';
+      const state = { search: '', category: '', source: '', sort: 'name', favOnly: false, data: null };
+
+      let favorites = new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? '[]'));
+
+      function saveFavorites() {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
+      }
 
       const searchInput = document.getElementById('search');
       const categorySelect = document.getElementById('category');
       const sourceSelect = document.getElementById('source');
+      const sortSelect = document.getElementById('sort');
+      const favOnlyCheckbox = document.getElementById('favonly');
       const summary = document.getElementById('summary');
       const results = document.getElementById('results');
       const errors = document.getElementById('errors');
@@ -130,6 +163,9 @@ export function buildHtml({ generatedAt }) {
       }
 
       function matchesStore(store) {
+        if (state.favOnly && !favorites.has(store.slug)) {
+          return false;
+        }
         const haystack = [
           store.name,
           ...(store.categories || []),
@@ -141,6 +177,16 @@ export function buildHtml({ generatedAt }) {
         const matchesCategory = !state.category || (store.categories || []).includes(state.category) || store.discounts.some((discount) => (discount.categories || []).includes(state.category));
         const matchesSource = !state.source || store.discounts.some((discount) => discount.source === state.source);
         return matchesSearch && matchesCategory && matchesSource;
+      }
+
+      function sortedStores(stores) {
+        const list = [...stores];
+        if (state.sort === 'newest') {
+          list.sort((a, b) => (b.firstScraped ?? b.lastScraped).localeCompare(a.firstScraped ?? a.lastScraped));
+        } else if (state.sort === 'oldest') {
+          list.sort((a, b) => (a.firstScraped ?? a.lastScraped).localeCompare(b.firstScraped ?? b.lastScraped));
+        }
+        return list;
       }
 
       function renderSummary(visibleStores) {
@@ -160,7 +206,7 @@ export function buildHtml({ generatedAt }) {
       }
 
       function renderStores() {
-        const visibleStores = (state.data.stores || []).filter(matchesStore);
+        const visibleStores = sortedStores((state.data.stores || []).filter(matchesStore));
         renderSummary(visibleStores);
         results.replaceChildren();
 
@@ -176,9 +222,30 @@ export function buildHtml({ generatedAt }) {
           const card = document.createElement('article');
           card.className = 'card';
 
+          const cardHeader = document.createElement('div');
+          cardHeader.className = 'card-header';
+
           const heading = document.createElement('h2');
           heading.textContent = store.name;
-          card.append(heading);
+          cardHeader.append(heading);
+
+          const favBtn = document.createElement('button');
+          favBtn.className = 'fav-btn';
+          const isFav = favorites.has(store.slug);
+          favBtn.setAttribute('aria-pressed', String(isFav));
+          favBtn.setAttribute('aria-label', isFav ? 'Fjern fra favoritter' : 'Legg til i favoritter');
+          favBtn.textContent = '★';
+          favBtn.addEventListener('click', () => {
+            if (favorites.has(store.slug)) {
+              favorites.delete(store.slug);
+            } else {
+              favorites.add(store.slug);
+            }
+            saveFavorites();
+            renderStores();
+          });
+          cardHeader.append(favBtn);
+          card.append(cardHeader);
 
           const meta = document.createElement('div');
           meta.className = 'summary';
@@ -197,6 +264,13 @@ export function buildHtml({ generatedAt }) {
             link.rel = 'noopener noreferrer';
             link.textContent = discount.source;
             info.append(link, document.createTextNode(' · sist skrapt ' + formatDate(discount.lastScraped)));
+
+            if (discount.isNew) {
+              const newBadge = document.createElement('span');
+              newBadge.className = 'pill pill-new';
+              newBadge.textContent = 'Ny';
+              info.append(document.createTextNode(' '), newBadge);
+            }
 
             if (discount.stale) {
               const staleBadge = document.createElement('span');
@@ -261,6 +335,14 @@ export function buildHtml({ generatedAt }) {
         });
         sourceSelect.addEventListener('change', () => {
           state.source = sourceSelect.value;
+          renderStores();
+        });
+        sortSelect.addEventListener('change', () => {
+          state.sort = sortSelect.value;
+          renderStores();
+        });
+        favOnlyCheckbox.addEventListener('change', () => {
+          state.favOnly = favOnlyCheckbox.checked;
           renderStores();
         });
 
