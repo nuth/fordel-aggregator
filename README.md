@@ -1,6 +1,6 @@
 # fordel-aggregator
 
-Scrapes membership discount pages on a schedule, aggregates matching stores across sources, and publishes a searchable overview to GitHub Pages.
+Scrapes membership discount pages once a month or on demand, aggregates matching stores across sources, and publishes a searchable overview to GitHub Pages.
 
 ## Included sources
 
@@ -32,3 +32,5 @@ npm run build
 ```
 
 The build generates `docs/index.html` and `docs/data.json`, which are deployed by `.github/workflows/scrape-and-deploy.yml`.
+
+Scraper code is split by site under `src/scrapers/`, with `src/scraper.js` acting as the shared runner.
