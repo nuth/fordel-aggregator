@@ -150,7 +150,9 @@ export function buildHtml({ generatedAt }) {
           for (const discount of store.discounts) {
             const item = document.createElement('li');
             const info = document.createElement('div');
-            info.innerHTML = '<strong>' + discount.source + '</strong> · sist skrapt ' + formatDate(discount.lastScraped);
+            const strong = document.createElement('strong');
+            strong.textContent = discount.source;
+            info.append(strong, document.createTextNode(' · sist skrapt ' + formatDate(discount.lastScraped)));
             item.append(info);
 
             if (discount.categories && discount.categories.length > 0) {
@@ -228,7 +230,10 @@ export function buildHtml({ generatedAt }) {
       }
 
       initialize().catch((error) => {
-        results.innerHTML = '<p class="card">Kunne ikke laste data: ' + error.message + '</p>';
+        const p = document.createElement('p');
+        p.className = 'card';
+        p.textContent = 'Kunne ikke laste data: ' + error.message;
+        results.replaceChildren(p);
       });
     </script>
   </body>

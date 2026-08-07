@@ -38,11 +38,11 @@ function normalizeWhitespace(value) {
 function decodeHtmlEntities(value) {
   return value
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 }
 
 function stripTags(value) {
@@ -315,6 +315,226 @@ export function extractDiscountsFromHtml(html, source) {
   return structured.length > 0 ? structured : extractFromAnchors(html, source);
 }
 
+// ─── Site-specific extractors ────────────────────────────────────────────────
+
+/**
+ * LOfavør: extract benefits by filtering nav anchors to known benefit-category
+ * URL prefixes and inferring the category from the URL path.
+ */
+function extractLofavorDiscounts(html, source) {
+  const CATEGORY_PREFIXES = [
+    ['/forsikring/', 'Forsikring'],
+    ['/juridisk/', 'Juridisk'],
+    ['/ferie-og-opplevelser/', 'Ferie og opplevelser'],
+    ['/ferie-og-fritid/', 'Ferie og fritid'],
+    ['/hus-og-hjem/', 'Hus og hjem'],
+    ['/bank/', 'Bank'],
+  ];
+
+  const seen = new Set();
+  const results = [];
+
+  for (const match of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const [, href, inner] = match;
+
+    let pathname;
+    try {
+      pathname = new URL(href, source.baseUrl).pathname;
+    } catch {
+      continue;
+    }
+
+    let category = null;
+    for (const [prefix, cat] of CATEGORY_PREFIXES) {
+      if (pathname.startsWith(prefix)) {
+        category = cat;
+        break;
+      }
+    }
+    if (!category) continue;
+
+    const name = normalizeWhitespace(stripTags(inner));
+    if (!name || STOP_WORDS.has(name.toLowerCase()) || name.length > 80) continue;
+
+    const link = asAbsoluteUrl(source.baseUrl, href);
+    if (!link) continue;
+
+    const key = `${name}::${pathname}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    results.push({
+      name,
+      description: null,
+      categories: [category],
+      link,
+      source: source.name,
+      sourceId: source.id,
+      scrapedFrom: source.url,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Remember Reward: parse the embedded __NEXT_DATA__ JSON which contains a
+ * complete store list with descriptions, affiliate URLs, and category mappings.
+ */
+function extractRememberRewardDiscounts(html, source) {
+  const scriptMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!scriptMatch) return [];
+
+  let data;
+  try {
+    data = JSON.parse(scriptMatch[1]);
+  } catch {
+    return [];
+  }
+
+  const pp = data?.props?.pageProps;
+  if (!pp?.stores) return [];
+
+  // Build store-id → category-name[] map from categories[].shops
+  const storeCats = new Map();
+  for (const cat of pp.categories ?? []) {
+    const catName = cat.title || cat.name || '';
+    for (const shop of cat.shops ?? []) {
+      if (!storeCats.has(shop.id)) storeCats.set(shop.id, []);
+      storeCats.get(shop.id).push(catName);
+    }
+  }
+
+  return pp.stores
+    .filter((s) => s.enabled && s.name)
+    .map((s) => ({
+      name: normalizeWhitespace(s.name),
+      description: s.description ? normalizeWhitespace(s.description) : null,
+      categories: storeCats.get(s.id) ?? [],
+      link: s.affiliateUrl || asAbsoluteUrl(source.baseUrl, s.shopUrl) || source.url,
+      source: source.name,
+      sourceId: source.id,
+      scrapedFrom: source.url,
+    }));
+}
+
+/**
+ * Trumf Netthandel: fetch each category page and extract store cards which
+ * carry the store name, cashback percentage and URL as data attributes.
+ */
+async function scrapeTrumfDiscounts(fetch, source) {
+  const html = await fetch(source.url);
+  const catSlugs = [...new Set([...html.matchAll(/href="(\/kategori\/[^"]+)"/g)].map((m) => m[1]))].filter(
+    (slug) => slug !== '/kategori',
+  );
+
+  const results = [];
+  const seen = new Set();
+
+  await Promise.all(
+    catSlugs.map(async (slug) => {
+      const catHtml = await fetch(`${source.baseUrl}${slug}`).catch(() => '');
+      const catName = slug.replace('/kategori/', '');
+      const display = catName.charAt(0).toUpperCase() + catName.slice(1);
+
+      for (const tagMatch of catHtml.matchAll(/<a\b([^>]*href="\/cashback\/[^"]*"[^>]*)>/g)) {
+        const tag = tagMatch[1];
+        const hrefM = tag.match(/href="(\/cashback\/[^"]+)"/);
+        const nameM = tag.match(/data-name="([^"]+)"/);
+        const pctM = tag.match(/data-percentage="([^"]+)"/);
+        if (!hrefM || !nameM) continue;
+        const [, href] = hrefM;
+        const [, name] = nameM;
+        const pct = pctM ? pctM[1] : '';
+        const key = `${name}::${href}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({
+          name,
+          description: pct ? `Opptil ${pct} Trumf-bonus` : null,
+          categories: [display],
+          link: `${source.baseUrl}${href}`,
+          source: source.name,
+          sourceId: source.id,
+          scrapedFrom: source.url,
+        });
+      }
+    }),
+  );
+
+  return results;
+}
+
+/**
+ * OBOS Medlemsfordeler: the page uses Next.js App Router (RSC wire format).
+ * The full benefit list including names, slugs, categories and ingress text is
+ * embedded in the largest __next_f.push block as a JSON-encoded string.
+ */
+function extractObosDiscounts(html, source) {
+  // Find the RSC wire-format block that contains the full benefit data
+  let decoded = '';
+  for (const m of html.matchAll(/self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g)) {
+    if (m[1].length > 50_000) {
+      try {
+        decoded = JSON.parse('"' + m[1] + '"');
+        if (decoded.includes('member_memberBenefit')) break;
+      } catch {
+        decoded = '';
+      }
+    }
+  }
+  if (!decoded) return [];
+
+  // Derive the base path for individual benefit pages from the source URL,
+  // e.g. https://www.obos.no/MEMBER_PATH/BENEFIT_BASE → /MEMBER_PATH/BENEFIT_BASE
+  // where BENEFIT_BASE is the pathname from the scrapeFrom URL (without query string).
+  const benefitBasePath = new URL(source.url).pathname.split('?')[0];
+
+  // Each benefit object in the RSC payload has this field order:
+  // _type → … → categories → … → company{ ingress, title } → … → slug{ current }
+  const benefitPattern =
+    /"_type":"member_memberBenefit".*?"categories":(\[[^\]]*\]).*?"ingress":"((?:[^"\\]|\\.)*)".*?"title":"([^"]+)"\}.*?"current":"([^"]+)"/gs;
+
+  const results = [];
+  const seen = new Set();
+
+  for (const m of decoded.matchAll(benefitPattern)) {
+    const [, catsJson, ingress, title, slug] = m;
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+
+    const cats = [...catsJson.matchAll(/"name":"([^"]+)"/g)].map((c) => c[1]);
+    const name = normalizeWhitespace(title);
+    const description = ingress ? normalizeWhitespace(ingress.replace(/\\n/g, ' ').replace(/\\"/g, '"')) : null;
+
+    results.push({
+      name,
+      description,
+      categories: cats,
+      link: `${source.baseUrl}${benefitBasePath}/${slug}`,
+      source: source.name,
+      sourceId: source.id,
+      scrapedFrom: source.url,
+    });
+  }
+
+  return results;
+}
+
+// Registry of site-specific extractors keyed by source.id
+const SOURCE_EXTRACTORS = {
+  lofavor: extractLofavorDiscounts,
+  'remember-reward': extractRememberRewardDiscounts,
+  'obos-medlemsfordeler': extractObosDiscounts,
+};
+
+// Registry of multi-URL async scrapers (replace the single-fetch pipeline)
+const SOURCE_SCRAPERS = {
+  'trumf-netthandel': scrapeTrumfDiscounts,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function fetchHtml(url) {
   const response = await fetch(url, {
     headers: {
@@ -336,11 +556,19 @@ export async function scrapeSource(source, clock = () => new Date()) {
   const scrapedAt = clock().toISOString();
 
   try {
-    const html = await fetchHtml(source.url);
-    const discounts = extractDiscountsFromHtml(html, source).map((entry) => ({
-      ...entry,
-      lastScraped: scrapedAt,
-    }));
+    let discounts;
+
+    const customScraper = SOURCE_SCRAPERS[source.id];
+    const customExtractor = SOURCE_EXTRACTORS[source.id];
+
+    if (customScraper) {
+      const raw = await customScraper(fetchHtml, source);
+      discounts = raw.map((entry) => ({ ...entry, lastScraped: scrapedAt }));
+    } else {
+      const html = await fetchHtml(source.url);
+      const extract = customExtractor ?? extractDiscountsFromHtml;
+      discounts = extract(html, source).map((entry) => ({ ...entry, lastScraped: scrapedAt }));
+    }
 
     return {
       id: source.id,
