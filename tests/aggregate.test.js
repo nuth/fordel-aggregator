@@ -530,6 +530,69 @@ test('buildHtml renders new badge and favorites button', () => {
   assert.match(html, /Eldste tilbud/, 'sort by oldest option should be present');
 });
 
+test('scrapeSource uses NITO extractor and stamps discounts', { concurrency: false }, async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const propsJson = JSON.stringify({
+    memberBenefitList: [
+      {
+        category: { name: 'Rabatter', pictogram: '' },
+        memberBenefitsDetails: [
+          {
+            contentLink: '/medlemskap-og-fordeler/medlemsfordeler/bilrabatt-mercedes-benz/',
+            heading: 'Bilrabatt Mercedes-Benz',
+            tags: ['Rabatter'],
+            salesArguments: [],
+            pricebomb: '',
+            partnerName: 'Bertel O. Steen',
+          },
+          {
+            contentLink: '/medlemskap-og-fordeler/medlemsfordeler/bilrabatt-opel/',
+            heading: 'Bilrabatt Opel',
+            tags: ['Rabatter'],
+            salesArguments: [],
+            pricebomb: '',
+            partnerName: 'Bertel O. Steen',
+          },
+        ],
+      },
+    ],
+  });
+
+  const encodedProps = propsJson.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    text: async () => `<div class="member-benefit-list"><div data-props="${encodedProps}"></div></div>`,
+  });
+
+  const result = await scrapeSource(
+    {
+      id: 'nito-medlemsfordeler',
+      name: 'NITO Medlemsfordeler',
+      url: 'https://www.nito.no/medlemskap-og-fordeler/medlemsfordeler/',
+      baseUrl: 'https://www.nito.no',
+    },
+    () => new Date('2026-08-07T10:00:00.000Z'),
+  );
+
+  assert.equal(result.error, null);
+  assert.equal(result.count, 2);
+  assert.deepEqual(result.discounts[0], {
+    name: 'Bilrabatt Mercedes-Benz',
+    description: null,
+    categories: ['Rabatter'],
+    link: 'https://www.nito.no/medlemskap-og-fordeler/medlemsfordeler/bilrabatt-mercedes-benz/',
+    source: 'NITO Medlemsfordeler',
+    sourceId: 'nito-medlemsfordeler',
+    scrapedFrom: 'https://www.nito.no/medlemskap-og-fordeler/medlemsfordeler/',
+    lastScraped: '2026-08-07T10:00:00.000Z',
+  });
+});
+
 test('buildHtml includes click tracking localStorage key and most-clicked sort option', () => {
   const html = buildHtml({ generatedAt: '2026-08-07T10:00:00.000Z' });
   assert.match(html, /fordel-clicks/, 'click tracking localStorage key should be present');
