@@ -14,32 +14,64 @@ export function buildHtml({ generatedAt }) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Fordelsoversikt</title>
     <style>
-      :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
-      body { margin: 0; background: #f8fafc; color: #1e293b; }
-      @media (prefers-color-scheme: dark) {
-        body { background: #1e293b; color: #f1f5f9; }
-        input, select { background: #334155; border-color: #475569; }
-        .pill { background: #334155; color: #e2e8f0; }
-        .card { background: #273449; border-color: #475569; }
-        a { color: #60a5fa; }
-        .meta, .hint, .muted { color: #94a3b8; }
+      :root {
+        color-scheme: light dark;
+        font-family: Inter, system-ui, sans-serif;
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --border: #e2e8f0;
+        --text: #1e293b;
+        --text-muted: #64748b;
+        --accent: #2563eb;
+        --pill-bg: #e2e8f0;
+        --pill-text: #334155;
+        --input-bg: #ffffff;
+        --input-border: #cbd5e1;
+        --shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
+        --shadow-hover: 0 4px 16px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.10);
+        --radius: 1rem;
       }
-      main { max-width: 72rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
-      h1 { margin-bottom: 0.5rem; }
-      .meta, .hint { color: #64748b; }
-      .toolbar { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: 1.5rem 0; }
-      input, select { width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; background: #fff; color: inherit; }
-      .summary { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
-      .pill { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.35rem 0.65rem; border-radius: 999px; background: #e2e8f0; color: #334155; font-size: 0.875rem; }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f172a;
+          --surface: #1e293b;
+          --border: #334155;
+          --text: #e2e8f0;
+          --text-muted: #94a3b8;
+          --accent: #60a5fa;
+          --pill-bg: #334155;
+          --pill-text: #cbd5e1;
+          --input-bg: #1e293b;
+          --input-border: #475569;
+          --shadow: 0 2px 8px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.40);
+          --shadow-hover: 0 4px 16px rgba(0,0,0,0.40), 0 2px 6px rgba(0,0,0,0.40);
+        }
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); transition: background 0.2s, color 0.2s; }
+      main { max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+      header { margin-bottom: 0.25rem; }
+      h1 { margin: 0 0 0.25rem; font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+      .meta { color: var(--text-muted); font-size: 0.875rem; margin: 0 0 0.25rem; }
+      .hint { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1.5rem; max-width: 60ch; }
+      .toolbar { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: 1.25rem 0 1.75rem; }
+      .toolbar label span { display: block; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.35rem; }
+      input, select { width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1.5px solid var(--input-border); background: var(--input-bg); color: var(--text); font-size: 0.95rem; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+      input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+      .summary { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.25rem; }
+      .pill { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.3rem 0.75rem; border-radius: 999px; background: var(--pill-bg); color: var(--pill-text); font-size: 0.82rem; font-weight: 500; }
       .pill-stale { background: #fef3c7; color: #92400e; }
-      .grid { display: grid; gap: 1rem; }
-      .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; }
-      .card h2 { margin-top: 0; margin-bottom: 0.75rem; }
-      ul { padding-left: 1.1rem; }
-      li + li { margin-top: 0.75rem; }
-      a { color: #2563eb; }
-      .errors { margin-top: 2rem; }
-      .muted { color: #64748b; }
+      @media (prefers-color-scheme: dark) { .pill-stale { background: #451a03; color: #fcd34d; } }
+      .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: var(--shadow); transition: box-shadow 0.2s, transform 0.2s; }
+      .card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+      .card h2 { margin: 0 0 0.75rem; font-size: 1.15rem; font-weight: 700; }
+      ul { padding-left: 1.1rem; margin: 0.5rem 0 0; }
+      li + li { margin-top: 0.85rem; }
+      a { color: var(--accent); text-decoration: none; font-weight: 500; }
+      a:hover { text-decoration: underline; }
+      .errors { margin-top: 2.5rem; }
+      .muted { color: var(--text-muted); }
     </style>
   </head>
   <body>
