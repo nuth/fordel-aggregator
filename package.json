@@ -1,0 +1,22 @@
+{
+  "name": "fordel-aggregator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scheduled scraping and GitHub Pages publishing for membership discounts.",
+  "type": "module",
+  "scripts": {
+    "build": "node ./src/build-site.js",
+    "scrape": "node ./src/build-site.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://localhost:26831/nuth/fordel-aggregator"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
