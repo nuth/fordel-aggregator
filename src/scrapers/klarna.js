@@ -40,8 +40,9 @@ function buildDescription(cashbackDiscount) {
   if (!cashbackDiscount) return null;
   const label = cashbackDiscount.discountLabel;
   if (!label) return null;
-  const prefix =
-    cashbackDiscount.showUpToPrefix && !label.prefix ? 'Opptil' : label.prefix;
+  const prefix = cashbackDiscount.showUpToPrefix
+    ? label.prefix || 'Opptil'
+    : null;
   const parts = [prefix, label.body, label.suffix].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : null;
 }
