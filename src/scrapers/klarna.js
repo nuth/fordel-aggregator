@@ -3,6 +3,16 @@ const KLARNA_API_BASE =
 
 const PAGE_SIZE = 100;
 
+const CATEGORY_LABELS = {
+  health_beauty: 'Helse og skjønnhet',
+  fashion: 'Mote',
+  electronics: 'Elektronikk',
+  home_more: 'Hjem og mer',
+  sports: 'Sport',
+  conscious: 'Bærekraft',
+  marketplaces: 'Markedsplasser',
+};
+
 /**
  * Fetch a Klarna API URL and return the response body as text.
  * Uses a browser-like user-agent as required by the Klarna API.
@@ -35,13 +45,12 @@ function buildDescription(cashbackDiscount) {
 }
 
 function mapStore(store, source) {
-  const categories = Array.isArray(store.categories)
-    ? store.categories.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean)
-    : [];
+  const categorySlug = store.category ?? null;
+  const categories = categorySlug ? [CATEGORY_LABELS[categorySlug] ?? categorySlug] : [];
 
   return {
     name: store.displayName ?? store.name,
-    description: buildDescription(store.cashbackDiscount) ?? store.cashbackText ?? store.description ?? null,
+    description: buildDescription(store.cashbackDiscount) ?? null,
     categories,
     link: source.url,
     source: source.name,
@@ -62,14 +71,14 @@ export async function scrapeKlarnaDiscounts(fetchJson, source) {
     const url = `${KLARNA_API_BASE}&offset=${offset}&size=${PAGE_SIZE}`;
     const json = await fetchJson(url);
     const page = JSON.parse(json);
-    const stores = page.stores ?? page.content ?? page.items ?? page.results ?? [];
+    const stores = page.stores ?? [];
     if (stores.length === 0) break;
 
     for (const store of stores) {
       results.push(mapStore(store, source));
     }
 
-    const total = page.total ?? page.totalCount ?? page.totalElements ?? null;
+    const total = page.totalHits ?? null;
     offset += stores.length;
     if (total !== null && offset >= total) break;
     else if (total === null && stores.length < PAGE_SIZE) break;
