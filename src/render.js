@@ -23,6 +23,7 @@ export function buildHtml({ generatedAt }) {
       input, select { width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #475569; background: #0f172a; color: inherit; }
       .summary { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
       .pill { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.35rem 0.65rem; border-radius: 999px; background: #1e293b; color: #e2e8f0; font-size: 0.875rem; }
+      .pill-stale { background: #78350f; color: #fde68a; }
       .grid { display: grid; gap: 1rem; }
       .card { background: #0f172a; border: 1px solid #334155; border-radius: 1rem; padding: 1rem; }
       .card h2 { margin-top: 0; margin-bottom: 0.75rem; }
@@ -153,6 +154,12 @@ export function buildHtml({ generatedAt }) {
             const strong = document.createElement('strong');
             strong.textContent = discount.source;
             info.append(strong, document.createTextNode(' · sist skrapt ' + formatDate(discount.lastScraped)));
+            if (discount.stale) {
+              const staleBadge = document.createElement('span');
+              staleBadge.className = 'pill pill-stale';
+              staleBadge.textContent = 'Utdatert';
+              info.append(document.createTextNode(' '), staleBadge);
+            }
             item.append(info);
 
             if (discount.categories && discount.categories.length > 0) {

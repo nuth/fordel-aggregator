@@ -16,7 +16,10 @@ export async function scrapeTrumfDiscounts(fetch, source) {
     const batch = catSlugs.slice(index, index + concurrency);
     await Promise.all(
       batch.map(async (slug) => {
-        const catHtml = await fetch(`${source.baseUrl}${slug}`).catch(() => '');
+        const catHtml = await fetch(`${source.baseUrl}${slug}`).catch((error) => {
+          console.warn(`Failed to fetch Trumf category ${slug}: ${error.message}`);
+          return '';
+        });
         const catName = slug.replace('/kategori/', '');
         const display = catName.charAt(0).toUpperCase() + catName.slice(1);
 
