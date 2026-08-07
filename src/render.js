@@ -15,23 +15,31 @@ export function buildHtml({ generatedAt }) {
     <title>Fordelsoversikt</title>
     <style>
       :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
-      body { margin: 0; background: #111827; color: #f9fafb; }
+      body { margin: 0; background: #f8fafc; color: #1e293b; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #1e293b; color: #f1f5f9; }
+        input, select { background: #334155; border-color: #475569; }
+        .pill { background: #334155; color: #e2e8f0; }
+        .card { background: #273449; border-color: #475569; }
+        a { color: #60a5fa; }
+        .meta, .hint, .muted { color: #94a3b8; }
+      }
       main { max-width: 72rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
       h1 { margin-bottom: 0.5rem; }
-      .meta, .hint { color: #cbd5e1; }
+      .meta, .hint { color: #64748b; }
       .toolbar { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: 1.5rem 0; }
-      input, select { width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #475569; background: #0f172a; color: inherit; }
+      input, select { width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; background: #fff; color: inherit; }
       .summary { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
-      .pill { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.35rem 0.65rem; border-radius: 999px; background: #1e293b; color: #e2e8f0; font-size: 0.875rem; }
-      .pill-stale { background: #78350f; color: #fde68a; }
+      .pill { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.35rem 0.65rem; border-radius: 999px; background: #e2e8f0; color: #334155; font-size: 0.875rem; }
+      .pill-stale { background: #fef3c7; color: #92400e; }
       .grid { display: grid; gap: 1rem; }
-      .card { background: #0f172a; border: 1px solid #334155; border-radius: 1rem; padding: 1rem; }
+      .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; }
       .card h2 { margin-top: 0; margin-bottom: 0.75rem; }
       ul { padding-left: 1.1rem; }
       li + li { margin-top: 0.75rem; }
-      a { color: #93c5fd; }
+      a { color: #2563eb; }
       .errors { margin-top: 2rem; }
-      .muted { color: #94a3b8; }
+      .muted { color: #64748b; }
     </style>
   </head>
   <body>
@@ -141,33 +149,26 @@ export function buildHtml({ generatedAt }) {
           meta.append(badge(store.discountCount + ' tilbud'));
           card.append(meta);
 
-          if (store.description) {
-            const description = document.createElement('p');
-            description.textContent = store.description;
-            card.append(description);
-          }
-
           const list = document.createElement('ul');
           for (const discount of store.discounts) {
             const item = document.createElement('li');
             const info = document.createElement('div');
-            const strong = document.createElement('strong');
-            strong.textContent = discount.source;
-            info.append(strong, document.createTextNode(' · sist skrapt ' + formatDate(discount.lastScraped)));
+
+            const link = document.createElement('a');
+            link.href = discount.link;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = discount.source;
+            info.append(link, document.createTextNode(' · sist skrapt ' + formatDate(discount.lastScraped)));
+
             if (discount.stale) {
               const staleBadge = document.createElement('span');
               staleBadge.className = 'pill pill-stale';
               staleBadge.textContent = 'Utdatert';
               info.append(document.createTextNode(' '), staleBadge);
             }
-            item.append(info);
 
-            if (discount.categories && discount.categories.length > 0) {
-              const categories = document.createElement('div');
-              categories.className = 'summary';
-              discount.categories.forEach((category) => categories.append(badge(category)));
-              item.append(categories);
-            }
+            item.append(info);
 
             if (discount.description) {
               const description = document.createElement('p');
@@ -175,12 +176,6 @@ export function buildHtml({ generatedAt }) {
               item.append(description);
             }
 
-            const link = document.createElement('a');
-            link.href = discount.link;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.textContent = 'Se kilden';
-            item.append(link);
             list.append(item);
           }
           card.append(list);
