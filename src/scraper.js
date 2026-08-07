@@ -1,16 +1,16 @@
-import { extractLofavorDiscounts } from './scrapers/lofavor.js';
+import { scrapeLofavorDiscounts } from './scrapers/lofavor.js';
 import { extractObosDiscounts } from './scrapers/obos.js';
 import { extractRememberRewardDiscounts } from './scrapers/remember.js';
 import { extractDiscountsFromHtml, fetchHtml } from './scrapers/shared.js';
 import { scrapeTrumfDiscounts } from './scrapers/trumf.js';
 
 const SOURCE_EXTRACTORS = {
-  lofavor: extractLofavorDiscounts,
   'remember-reward': extractRememberRewardDiscounts,
   'obos-medlemsfordeler': extractObosDiscounts,
 };
 
 const SOURCE_SCRAPERS = {
+  lofavor: scrapeLofavorDiscounts,
   'trumf-netthandel': scrapeTrumfDiscounts,
 };
 
