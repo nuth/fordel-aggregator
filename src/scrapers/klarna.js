@@ -26,14 +26,22 @@ export async function fetchKlarnaJson(url) {
   return response.text();
 }
 
+function buildDescription(cashbackDiscount) {
+  if (!cashbackDiscount) return null;
+  const label = cashbackDiscount.discountLabel;
+  if (!label) return null;
+  const parts = [label.prefix, label.body, label.suffix].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : null;
+}
+
 function mapStore(store, source) {
   const categories = Array.isArray(store.categories)
     ? store.categories.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean)
     : [];
 
   return {
-    name: store.name,
-    description: store.cashbackText ?? store.description ?? null,
+    name: store.displayName ?? store.name,
+    description: buildDescription(store.cashbackDiscount) ?? store.cashbackText ?? store.description ?? null,
     categories,
     link: source.url,
     source: source.name,

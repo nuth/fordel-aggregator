@@ -655,13 +655,29 @@ test('scrapeSource uses Klarna scraper and paginates until exhausted', { concurr
 
   const page0 = JSON.stringify({
     stores: [
-      { name: 'Komplett', cashbackText: 'Opptil 5 % cashback', categories: ['Elektronikk'] },
+      {
+        displayName: 'Komplett',
+        cashbackDiscount: {
+          discountPercentage: 500,
+          discountLabel: { prefix: 'Opp til', body: '5%', suffix: 'cashback' },
+          showUpToPrefix: true,
+        },
+        categories: ['Elektronikk'],
+      },
     ],
     total: 2,
   });
   const page1 = JSON.stringify({
     stores: [
-      { name: 'Elkjøp', cashbackText: 'Opptil 3 % cashback', categories: [] },
+      {
+        displayName: 'Elkjøp',
+        cashbackDiscount: {
+          discountPercentage: 300,
+          discountLabel: { prefix: 'Opp til', body: '3%', suffix: 'cashback' },
+          showUpToPrefix: true,
+        },
+        categories: [],
+      },
     ],
     total: 2,
   });
@@ -686,7 +702,7 @@ test('scrapeSource uses Klarna scraper and paginates until exhausted', { concurr
   assert.equal(result.count, 2);
   assert.deepEqual(result.discounts[0], {
     name: 'Komplett',
-    description: 'Opptil 5 % cashback',
+    description: 'Opp til 5% cashback',
     categories: ['Elektronikk'],
     link: 'https://www.klarna.com/no/store/?type=CASHBACK',
     source: 'Klarna Cashback',
@@ -696,7 +712,7 @@ test('scrapeSource uses Klarna scraper and paginates until exhausted', { concurr
   });
   assert.deepEqual(result.discounts[1], {
     name: 'Elkjøp',
-    description: 'Opptil 3 % cashback',
+    description: 'Opp til 3% cashback',
     categories: [],
     link: 'https://www.klarna.com/no/store/?type=CASHBACK',
     source: 'Klarna Cashback',
