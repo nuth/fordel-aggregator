@@ -23,4 +23,10 @@ export const SOURCES = [
     url: 'https://www.obos.no/medlem/medlemsfordeler?view=list',
     baseUrl: 'https://www.obos.no',
   },
+  {
+    id: 'nito-medlemsfordeler',
+    name: 'NITO Medlemsfordeler',
+    url: 'https://www.nito.no/medlemskap-og-fordeler/medlemsfordeler/',
+    baseUrl: 'https://www.nito.no',
+  },
 ];
