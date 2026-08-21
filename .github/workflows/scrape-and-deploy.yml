@@ -36,6 +36,13 @@ jobs:
       - name: Run targeted tests
         run: npm test
 
+      - name: Download existing data from GitHub Pages
+        run: |
+          mkdir -p docs
+          curl --fail --silent --show-error \
+            "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data.json" \
+            --output docs/data.json || true
+
       - name: Generate GitHub Pages site
         run: npm run build
 
