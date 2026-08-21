@@ -51,11 +51,18 @@ export function aggregateDiscounts(discounts) {
       store.descriptions.add(description);
     }
 
+    const isNew = !!(discount.firstScraped && discount.firstScraped === discount.lastScraped);
+    const isUpdated =
+      !isNew &&
+      discount.previousDescription !== undefined &&
+      discount.previousDescription !== null &&
+      description !== discount.previousDescription;
     store.discounts.push({
       ...discount,
       categories: uniqueSorted(discount.categories ?? []),
       description,
-      isNew: !!(discount.firstScraped && discount.firstScraped === discount.lastScraped),
+      isNew,
+      isUpdated,
     });
 
     if (discount.lastScraped > store.lastScraped) {

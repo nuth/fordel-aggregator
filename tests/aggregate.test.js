@@ -819,3 +819,126 @@ test('scrapeSource omits prefix when showUpToPrefix is false even if label.prefi
     lastScraped: '2026-08-07T12:00:00.000Z',
   });
 });
+
+test('aggregateDiscounts marks discount as isUpdated when description has changed', () => {
+  const stores = aggregateDiscounts([
+    {
+      name: 'Tusenfryd',
+      description: '15 % rabatt',
+      previousDescription: '10 % rabatt',
+      categories: ['Fornøyelsespark'],
+      link: 'https://example.com/1',
+      source: 'Source A',
+      sourceId: 'a',
+      scrapedFrom: 'https://example.com/a',
+      lastScraped: '2026-08-07T00:00:00.000Z',
+      firstScraped: '2026-08-01T00:00:00.000Z',
+    },
+  ]);
+
+  assert.equal(stores[0].discounts[0].isNew, false);
+  assert.equal(stores[0].discounts[0].isUpdated, true);
+});
+
+test('aggregateDiscounts does not mark discount as isUpdated when description is unchanged', () => {
+  const stores = aggregateDiscounts([
+    {
+      name: 'Tusenfryd',
+      description: '10 % rabatt',
+      previousDescription: '10 % rabatt',
+      categories: ['Fornøyelsespark'],
+      link: 'https://example.com/1',
+      source: 'Source A',
+      sourceId: 'a',
+      scrapedFrom: 'https://example.com/a',
+      lastScraped: '2026-08-07T00:00:00.000Z',
+      firstScraped: '2026-08-01T00:00:00.000Z',
+    },
+  ]);
+
+  assert.equal(stores[0].discounts[0].isUpdated, false);
+});
+
+test('aggregateDiscounts does not mark discount as isUpdated when it is new', () => {
+  const stores = aggregateDiscounts([
+    {
+      name: 'Tusenfryd',
+      description: '10 % rabatt',
+      previousDescription: null,
+      categories: ['Fornøyelsespark'],
+      link: 'https://example.com/1',
+      source: 'Source A',
+      sourceId: 'a',
+      scrapedFrom: 'https://example.com/a',
+      lastScraped: '2026-08-07T00:00:00.000Z',
+      firstScraped: '2026-08-07T00:00:00.000Z',
+    },
+  ]);
+
+  assert.equal(stores[0].discounts[0].isNew, true);
+  assert.equal(stores[0].discounts[0].isUpdated, false);
+});
+
+test('applyFirstScraped carries over previousDescription from previous data', () => {
+  const previousDiscount = {
+    name: 'Komplett',
+    description: '4 % bonus',
+    link: 'https://example.com/komplett',
+    source: 'Test Source',
+    sourceId: 'test-source',
+    lastScraped: '2026-08-06T07:00:00.000Z',
+    firstScraped: '2026-08-05T07:00:00.000Z',
+  };
+  const previousDiscountsBySource = new Map([['test-source', [previousDiscount]]]);
+
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      error: null,
+      discounts: [
+        {
+          name: 'Komplett',
+          description: '5 % bonus',
+          link: 'https://example.com/komplett',
+          source: 'Test Source',
+          sourceId: 'test-source',
+          lastScraped: '2026-08-07T07:00:00.000Z',
+        },
+      ],
+    },
+  ];
+
+  applyFirstScraped(sourceResults, previousDiscountsBySource);
+
+  assert.equal(sourceResults[0].discounts[0].previousDescription, '4 % bonus');
+});
+
+test('applyFirstScraped sets previousDescription to null when no previous data', () => {
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      error: null,
+      discounts: [
+        {
+          name: 'Komplett',
+          description: '5 % bonus',
+          link: 'https://example.com/komplett',
+          source: 'Test Source',
+          sourceId: 'test-source',
+          lastScraped: '2026-08-07T07:00:00.000Z',
+        },
+      ],
+    },
+  ];
+
+  applyFirstScraped(sourceResults, new Map());
+
+  assert.equal(sourceResults[0].discounts[0].previousDescription, null);
+});
+
+test('buildHtml includes pill-updated CSS class', () => {
+  const html = buildHtml({ generatedAt: '2026-08-07T10:00:00.000Z' });
+  assert.match(html, /pill-updated/, 'updated badge CSS class should exist in template');
+});
