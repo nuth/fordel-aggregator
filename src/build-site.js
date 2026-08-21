@@ -37,9 +37,10 @@ export function applyFirstScraped(sourceResults, previousDiscountsBySource) {
       continue;
     }
     const prev = previousDiscountsBySource.get(result.id) ?? [];
-    const prevByLink = new Map(prev.map((discount) => [discount.link, discount]));
+    const prevKey = (discount) => `${discount.name}\0${discount.link}`;
+    const prevByKey = new Map(prev.map((discount) => [prevKey(discount), discount]));
     result.discounts = result.discounts.map((discount) => {
-      const previous = prevByLink.get(discount.link);
+      const previous = prevByKey.get(prevKey(discount));
       const firstScraped = previous?.firstScraped ?? previous?.lastScraped ?? discount.lastScraped;
       const previousDescription = previous?.description ?? null;
       return { ...discount, firstScraped, previousDescription };

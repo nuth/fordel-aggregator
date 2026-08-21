@@ -433,6 +433,58 @@ test('applyFirstScraped sets firstScraped from previous data when available', ()
   assert.equal(sourceResults[0].discounts[0].firstScraped, '2026-08-05T07:00:00.000Z');
 });
 
+test('applyFirstScraped preserves firstScraped for multiple discounts sharing the same link', () => {
+  const sharedLink = 'https://example.com/cashback';
+  const previousDiscounts = [
+    {
+      name: 'Nike',
+      link: sharedLink,
+      source: 'Test Source',
+      sourceId: 'test-source',
+      lastScraped: '2026-08-06T07:00:00.000Z',
+      firstScraped: '2026-08-01T07:00:00.000Z',
+    },
+    {
+      name: 'Adidas',
+      link: sharedLink,
+      source: 'Test Source',
+      sourceId: 'test-source',
+      lastScraped: '2026-08-06T07:00:00.000Z',
+      firstScraped: '2026-08-02T07:00:00.000Z',
+    },
+  ];
+  const previousDiscountsBySource = new Map([['test-source', previousDiscounts]]);
+
+  const sourceResults = [
+    {
+      id: 'test-source',
+      name: 'Test Source',
+      error: null,
+      discounts: [
+        {
+          name: 'Nike',
+          link: sharedLink,
+          source: 'Test Source',
+          sourceId: 'test-source',
+          lastScraped: '2026-08-07T07:00:00.000Z',
+        },
+        {
+          name: 'Adidas',
+          link: sharedLink,
+          source: 'Test Source',
+          sourceId: 'test-source',
+          lastScraped: '2026-08-07T07:00:00.000Z',
+        },
+      ],
+    },
+  ];
+
+  applyFirstScraped(sourceResults, previousDiscountsBySource);
+
+  assert.equal(sourceResults[0].discounts[0].firstScraped, '2026-08-01T07:00:00.000Z');
+  assert.equal(sourceResults[0].discounts[1].firstScraped, '2026-08-02T07:00:00.000Z');
+});
+
 test('applyFirstScraped uses lastScraped as firstScraped when no previous data', () => {
   const sourceResults = [
     {
