@@ -343,8 +343,14 @@ export function buildHtml({ generatedAt }) {
 
         const categories = [...new Set(state.data.stores.flatMap((store) => store.categories || []))].sort((a, b) => a.localeCompare(b, 'nb'));
         const sources = [...new Set(state.data.discounts.map((discount) => discount.source))].sort((a, b) => a.localeCompare(b, 'nb'));
-        const categoryCounts = new Map(categories.map((category) => [category, state.data.discounts.filter((discount) => (discount.categories || []).includes(category)).length]));
-        const sourceCounts = new Map(sources.map((source) => [source, state.data.discounts.filter((discount) => discount.source === source).length]));
+        const categoryCounts = new Map();
+        const sourceCounts = new Map();
+        for (const discount of state.data.discounts) {
+          sourceCounts.set(discount.source, (sourceCounts.get(discount.source) ?? 0) + 1);
+          for (const category of (discount.categories || [])) {
+            categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+          }
+        }
         categories.forEach((category) => categorySelect.append(option(category + ' (' + (categoryCounts.get(category) ?? 0) + ')', category)));
         sources.forEach((source) => sourceSelect.append(option(source + ' (' + (sourceCounts.get(source) ?? 0) + ')', source)));
 
