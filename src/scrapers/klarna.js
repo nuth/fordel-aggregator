@@ -51,6 +51,11 @@ function mapStore(store, source) {
   const categorySlug = store.category ?? null;
   const categories = categorySlug ? [CATEGORY_LABELS[categorySlug] ?? categorySlug] : [];
 
+  const cashbackPercentage =
+    typeof store.cashbackDiscount?.discountPercentage === 'number'
+      ? store.cashbackDiscount.discountPercentage
+      : null;
+
   return {
     name: store.displayName ?? store.name,
     description: buildDescription(store.cashbackDiscount) ?? null,
@@ -59,6 +64,7 @@ function mapStore(store, source) {
     source: source.name,
     sourceId: source.id,
     scrapedFrom: source.url,
+    ...(cashbackPercentage !== null ? { cashbackPercentage } : {}),
   };
 }
 
