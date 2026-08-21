@@ -708,6 +708,7 @@ test('scrapeSource uses Klarna scraper and paginates until exhausted', { concurr
     source: 'Klarna Cashback',
     sourceId: 'klarna-cashback',
     scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    cashbackPercentage: 500,
     lastScraped: '2026-08-07T12:00:00.000Z',
   });
   assert.deepEqual(result.discounts[1], {
@@ -718,6 +719,7 @@ test('scrapeSource uses Klarna scraper and paginates until exhausted', { concurr
     source: 'Klarna Cashback',
     sourceId: 'klarna-cashback',
     scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    cashbackPercentage: 300,
     lastScraped: '2026-08-07T12:00:00.000Z',
   });
 });
@@ -765,6 +767,7 @@ test('scrapeSource uses Opptil prefix when showUpToPrefix is true and prefix is 
     source: 'Klarna Cashback',
     sourceId: 'klarna-cashback',
     scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    cashbackPercentage: 800,
     lastScraped: '2026-08-07T12:00:00.000Z',
   });
 });
@@ -812,6 +815,7 @@ test('scrapeSource omits prefix when showUpToPrefix is false even if label.prefi
     source: 'Klarna Cashback',
     sourceId: 'klarna-cashback',
     scrapedFrom: 'https://www.klarna.com/no/store/?type=CASHBACK',
+    cashbackPercentage: 800,
     lastScraped: '2026-08-07T12:00:00.000Z',
   });
 });

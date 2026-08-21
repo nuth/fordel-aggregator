@@ -308,6 +308,24 @@ export function buildHtml({ generatedAt }) {
               item.append(description);
             }
 
+            if (typeof discount.cashbackPercentage === 'number') {
+              const basePct = discount.cashbackPercentage / 100;
+              const tiers = [
+                { label: 'Plus', value: 2 * basePct + 0.5 },
+                { label: 'Premium', value: 3 * basePct + 1 },
+                { label: 'Max', value: 4 * basePct + 1.5 },
+              ];
+              const tierList = document.createElement('ul');
+              tierList.className = 'membership-tiers';
+              for (const tier of tiers) {
+                const tierItem = document.createElement('li');
+                const pct = parseFloat(tier.value.toFixed(2));
+                tierItem.textContent = pct + '% with ' + tier.label;
+                tierList.append(tierItem);
+              }
+              item.append(tierList);
+            }
+
             list.append(item);
           }
           card.append(list);
