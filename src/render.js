@@ -29,6 +29,8 @@ export function buildHtml({ generatedAt }) {
         --pill-stale-text: #92400e;
         --pill-new-bg: #dcfce7;
         --pill-new-text: #166534;
+        --pill-updated-bg: #dbeafe;
+        --pill-updated-text: #1e40af;
         --pill-fav-bg: #fef9c3;
         --pill-fav-text: #854d0e;
         --input-bg: #ffffff;
@@ -52,6 +54,8 @@ export function buildHtml({ generatedAt }) {
           --pill-stale-text: #fcd34d;
           --pill-new-bg: #14532d;
           --pill-new-text: #86efac;
+          --pill-updated-bg: #1e3a5f;
+          --pill-updated-text: #93c5fd;
           --pill-fav-bg: #422006;
           --pill-fav-text: #fde68a;
           --input-bg: #1e293b;
@@ -76,6 +80,7 @@ export function buildHtml({ generatedAt }) {
       .pill { display: inline-flex; gap: 0.35rem; align-items: center; padding: 0.3rem 0.75rem; border-radius: 999px; background: var(--pill-bg); color: var(--pill-text); font-size: 0.82rem; font-weight: 500; }
       .pill-stale { background: var(--pill-stale-bg); color: var(--pill-stale-text); }
       .pill-new { background: var(--pill-new-bg); color: var(--pill-new-text); }
+      .pill-updated { background: var(--pill-updated-bg); color: var(--pill-updated-text); }
       .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
       .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: var(--shadow); transition: box-shadow 0.2s, transform 0.2s; }
       .card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
@@ -291,6 +296,13 @@ export function buildHtml({ generatedAt }) {
               newBadge.className = 'pill pill-new';
               newBadge.textContent = 'Ny';
               info.append(document.createTextNode(' '), newBadge);
+            }
+
+            if (discount.isUpdated) {
+              const updatedBadge = document.createElement('span');
+              updatedBadge.className = 'pill pill-updated';
+              updatedBadge.textContent = 'Oppdatert';
+              info.append(document.createTextNode(' '), updatedBadge);
             }
 
             if (discount.stale) {
