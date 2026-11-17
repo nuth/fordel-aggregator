@@ -26,10 +26,14 @@ test('scrapeSource fetches Spenn Norwegian catalog and stamps point offers', asy
           name: 'Komplett',
           description: 'Elektronikk og dingser.',
           spenn: 'Opp til 1,4 Spenn per 10 kr',
+          rate: { value: 1.4, unit: 'per 10 kr', fixed: false, up_to: true },
           category: 'Elektronikk og teknologi',
           activation_url: 'https://spenn.refunder.com/click?spennId={spennId}',
         },
-        { name: 'Bakeren og Kokken', spenn: '1,9 Spenn per 10 kr', category: 'Hjem & Hage' },
+        {
+          name: 'Bakeren og Kokken', spenn: '1,9 Spenn per 10 kr', category: 'Hjem & Hage',
+          rate: { value: 1.9, unit: 'per 10 kr', fixed: false, up_to: false },
+        },
       ]),
     };
   };
@@ -41,7 +45,7 @@ test('scrapeSource fetches Spenn Norwegian catalog and stamps point offers', asy
   assert.equal(result.count, 2);
   assert.deepEqual(result.discounts[0], {
     name: 'Komplett',
-    description: 'Opp til 1,4 Spenn per 10 kr',
+    description: 'Opptil ca. 1,4 % i Spenn (Opp til 1,4 Spenn per 10 kr; 10 Spenn ≈ 1 kr)',
     categories: ['Elektronikk og teknologi'],
     link: 'https://spenn.refunder.com/no/extension',
     source: 'Spenn',
@@ -49,7 +53,7 @@ test('scrapeSource fetches Spenn Norwegian catalog and stamps point offers', asy
     scrapedFrom: source.url,
     lastScraped: '2026-11-17T12:00:00.000Z',
   });
-  assert.equal(result.discounts[1].description, '1,9 Spenn per 10 kr');
+  assert.equal(result.discounts[1].description, 'Ca. 1,9 % i Spenn (1,9 Spenn per 10 kr; 10 Spenn ≈ 1 kr)');
   assert.equal(result.discounts[0].cashbackPercentage, undefined);
 });
 
@@ -66,6 +70,28 @@ test('Spenn handles missing optional fields and skips unnamed stores', async () 
   assert.equal(discounts[0].description, 'Informasjon om butikken');
   assert.deepEqual(discounts[0].categories, []);
   assert.equal(discounts[1].description, null);
+});
+
+test('Spenn leaves fixed, unsupported, or invalid rates unconverted', async () => {
+  for (const rate of [
+    { value: 100, unit: 'per 10 kr', fixed: true },
+    { value: 100, unit: 'per kjøp', fixed: false },
+    { value: '1.4', unit: 'per 10 kr', fixed: false },
+    { value: -1, unit: 'per 10 kr', fixed: false },
+    { value: null, unit: 'per 10 kr', fixed: false },
+  ]) {
+    const discounts = await scrapeSpennDiscounts(async () => catalog([
+      { name: 'Butikk', spenn: 'Original opptjening', rate },
+    ]), source);
+    assert.equal(discounts[0].description, 'Original opptjening');
+  }
+});
+
+test('Spenn converts zero rates and rates without display text', async () => {
+  const discounts = await scrapeSpennDiscounts(async () => catalog([
+    { name: 'Butikk', rate: { value: 0, unit: 'per 10 kr', fixed: false } },
+  ]), source);
+  assert.equal(discounts[0].description, 'Ca. 0 % i Spenn (10 Spenn ≈ 1 kr)');
 });
 
 test('Spenn rejects malformed catalogs and other markets or locales', async () => {
