@@ -8,6 +8,9 @@ Scrapes membership discount pages once a month or on demand, aggregates matching
 - https://www.remember.no/reward/rabatt/
 - https://trumfnetthandel.no/
 - https://www.obos.no/medlem/medlemsfordeler?view=list
+- Spenn (Norway): https://spenn-cdn.refunder.com/extension/v1/no/catalog.nb.json
+
+Spenn uses the Norwegian catalog's stores, categories, and displayed earning rates (Spenn points, not cashback percentages). Links go to the public extension page because activation URLs require a personal `spennId`. Campaigns and direct brands without earning rates are not imported.
 
 ## Data model
 

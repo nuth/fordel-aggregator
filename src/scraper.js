@@ -4,6 +4,7 @@ import { extractNitoDiscounts } from './scrapers/nito.js';
 import { extractObosDiscounts } from './scrapers/obos.js';
 import { extractRememberRewardDiscounts } from './scrapers/remember.js';
 import { extractDiscountsFromHtml, fetchHtml } from './scrapers/shared.js';
+import { scrapeSpennDiscounts } from './scrapers/spenn.js';
 import { scrapeTrumfDiscounts } from './scrapers/trumf.js';
 
 const SOURCE_EXTRACTORS = {
@@ -13,6 +14,7 @@ const SOURCE_EXTRACTORS = {
 };
 
 const SOURCE_SCRAPERS = {
+  spenn: scrapeSpennDiscounts,
   lofavor: scrapeLofavorDiscounts,
   'trumf-netthandel': scrapeTrumfDiscounts,
   'klarna-cashback': scrapeKlarnaDiscounts,
