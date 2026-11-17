@@ -1,5 +1,11 @@
 export const SOURCES = [
   {
+    id: 'spenn',
+    name: 'Spenn',
+    url: 'https://spenn-cdn.refunder.com/extension/v1/no/catalog.nb.json',
+    baseUrl: 'https://spenn.refunder.com',
+  },
+  {
     id: 'lofavor',
     name: 'LOfavør',
     url: 'https://www.lofavor.no/home',
